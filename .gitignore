@@ -1,0 +1,5 @@
+#### Node Modules
+/node_modules
+
+#### Package auto generated
+package-lock.json
