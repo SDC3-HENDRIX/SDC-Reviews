@@ -1,0 +1,100 @@
+// AGGREGATION PIPELINES SCRIPTS
+
+db.reviews.aggregate([
+  {
+    $limit: 5
+  },
+  {
+    $lookup: {
+      from: "characteristics_reviews",
+      localField: "id",
+      foreignField: "review_id",
+      as: "characteristics_reviews"
+    }
+  },
+  {
+    $group: {
+      _id: "$product_id",
+      reviews: { 
+        $push: "$$ROOT" 
+      }
+    }
+  },
+  {
+    $out: "testing_aggregation1"
+  }
+]).pretty()
+
+
+// CHARACTERISTICS RESHAPE
+db.characteristics_reviews.aggregate([
+  {
+    $limit: 10
+  },
+  {
+    $lookup: {
+      from: "characteristics",
+      localField: "characteristic_id",
+      foreignField: "id",
+      as: "characteristics"
+    }
+  },
+  { 
+    $unwind: '$characteristics' 
+  },
+  { 
+    $replaceRoot: { 
+      newRoot: {
+        $mergeObjects: [
+          {"characteristics_name": "$characteristics.name"},
+          {"review_id": "$review_id"},
+          {"value": "$value"},
+          {"characteristic_id": "$characteristic_id"}
+        ]
+      }
+    }
+  },
+  {
+    $group: {
+      _id: "$review_id",
+      characteristics: { 
+        $push: {
+          $mergeObjects: [
+            {"characteristic_id": "$characteristic_id"},
+            {"characteristics_name": "$characteristics_name"},
+            {"value": "$value"}
+          ]
+        }
+      }
+    }
+  },
+  {
+    $out: "testing_aggregation_characteristics"
+  }
+]).pretty()
+
+
+{
+  "_id" : ObjectId("6053a2cd1be44108b3a82e3b"),
+  "id" : 13,
+  "characteristic_id" : 5,
+  "review_id" : 7,
+  "value" : 4,
+  "characteristics" : {
+    "_id" : ObjectId("6053a3751be44108b3cf8ab3"),
+    "id" : 5,
+    "product_id" : 2,
+    "name" : "Quality"
+  }
+}
+>>>>>>>>>>>>>>>>>>>>>>>>>>
+{
+  "_id" : 7,
+  "characteristics" : [
+    {
+      "characteristic_id" : 5,
+      "characteristics_name" : "Quality",
+      "value" : 4
+    }
+  ]
+}
