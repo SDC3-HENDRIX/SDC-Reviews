@@ -1,36 +1,148 @@
 // AGGREGATION PIPELINES SCRIPTS
 
+//REVIEWS RESHAPE PART 1
 db.reviews.aggregate([
   {
-    $limit: 5
-  },
-  {
     $lookup: {
-      from: "characteristics_reviews",
+      from: "testing_aggregation_characteristics",
       localField: "id",
-      foreignField: "review_id",
+      foreignField: "_id",
       as: "characteristics_reviews"
     }
   },
-  {
-    $group: {
-      _id: "$product_id",
-      reviews: { 
-        $push: "$$ROOT" 
+  { 
+    $replaceRoot: { 
+      newRoot: {
+        $mergeObjects: [
+          {"id": "$id"},
+          {"product_id": "$product_id"},
+          {"rating": "$rating"},
+          {"date": "$date"},
+          {"summary": "$summary"},
+          {"body": "$body"},
+          {"recommend": "$recommend"},
+          {"reported": "$reported"},
+          {"reviewer_name": "$reviewer_name"},
+          {"reviewer_email": "$reviewer_email"},
+          {"response": "$response"},
+          {"helpfulness": "$helpfulness"},
+          {"characteristics_reviews": "$characteristics_reviews.characteristics"}
+        ]
       }
     }
   },
   {
-    $out: "testing_aggregation1"
+    $sort: {
+      _id: 1
+    }
+  },
+  {
+    $out: "testing_aggregation_review_part1"
   }
-]).pretty()
+], { allowDiskUse: true } )
+
+
+{
+        "_id" : ObjectId("6053a3d81be44108b32c90bb"),
+        "id" : 8,
+        "product_id" : 4,
+        "rating" : 4,
+        "date" : "2019-03-21",
+        "summary" : "These pants are fine",
+        "body" : "I do like these pants",
+        "recommend" : "true",
+        "reported" : "false",
+        "reviewer_name" : "shopaddict",
+        "reviewer_email" : "first.last@gmail.com",
+        "response" : "",
+        "helpfulness" : 2
+}
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+{
+  "_id" : ObjectId("60560421f490a9207b1f7fd8"),
+  "id" : 8,
+  "product_id" : 4,
+  "rating" : 4,
+  "date" : "2019-03-21",
+  "summary" : "These pants are fine",
+  "body" : "I do like these pants",
+  "recommend" : "true",
+  "reported" : "false",
+  "reviewer_name" : "shopaddict",
+  "reviewer_email" : "first.last@gmail.com",
+  "response" : "",
+  "helpfulness" : 2,
+  "characteristics_reviews" : [
+    [
+      {
+        "characteristic_id" : 11,
+        "characteristics_name" : "Length",
+        "value" : 3
+      },
+      {
+        "characteristic_id" : 10,
+        "characteristics_name" : "Fit",
+        "value" : 2
+      },
+      {
+        "characteristic_id" : 12,
+        "characteristics_name" : "Comfort",
+        "value" : 2
+      },
+      {
+        "characteristic_id" : 13,
+        "characteristics_name" : "Quality",
+        "value" : 1
+      }
+    ]
+  ]
+}
+
+// REVIEWS RESHAPE PART 2
+db.testing_aggregation_review_part1.aggregate([
+  {
+    $lookup:  {
+      from: "testing_aggregation_photos",
+      localField: "id",
+      foreignField: "_id",
+      as: "photos"
+    }
+  },
+  { 
+    $replaceRoot: { 
+      newRoot: {
+        $mergeObjects: [
+          {"id": "$id"},
+          {"product_id": "$product_id"},
+          {"rating": "$rating"},
+          {"date": "$date"},
+          {"summary": "$summary"},
+          {"body": "$body"},
+          {"recommend": "$recommend"},
+          {"reported": "$reported"},
+          {"reviewer_name": "$reviewer_name"},
+          {"reviewer_email": "$reviewer_email"},
+          {"response": "$response"},
+          {"helpfulness": "$helpfulness"},
+          {"characteristics_reviews": "$characteristics_reviews"},
+          {"photos": "$photos.url"}
+        ]
+      }
+    }
+  },
+  {
+    $sort: {
+      _id: 1
+    }
+  },
+  {
+    $out: "testing_aggregation_final"
+  }
+], { allowDiskUse: true } )
 
 
 // CHARACTERISTICS RESHAPE
 db.characteristics_reviews.aggregate([
-  {
-    $limit: 10
-  },
   {
     $lookup: {
       from: "characteristics",
@@ -71,7 +183,7 @@ db.characteristics_reviews.aggregate([
   {
     $out: "testing_aggregation_characteristics"
   }
-]).pretty()
+], { allowDiskUse: true } )
 
 
 {
@@ -87,7 +199,7 @@ db.characteristics_reviews.aggregate([
     "name" : "Quality"
   }
 }
->>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 {
   "_id" : 7,
   "characteristics" : [
@@ -96,5 +208,35 @@ db.characteristics_reviews.aggregate([
       "characteristics_name" : "Quality",
       "value" : 4
     }
+  ]
+}
+
+
+//PHOTOS RESHAPE
+db.reviews_photos.aggregate([
+  {
+    $group: {
+      _id: "$review_id",
+      url: { 
+        $push: "$url"
+      }
+    }
+  },
+  {
+    $out: "testing_aggregation_photos"
+  }
+], { allowDiskUse: true } )
+
+{
+  "_id" : ObjectId("6053a3a61be44108b302abca"),
+  "id" : 19,
+  "review_id" : 36,
+  "url" : "https://images.unsplash.com/photo-1554774853-d50f9c681ae2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1651&q=80"
+}
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+{
+  "_id" : 36,
+  "url" : [
+    "https://images.unsplash.com/photo-1554774853-d50f9c681ae2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1651&q=80"
   ]
 }
