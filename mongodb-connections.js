@@ -63,7 +63,6 @@ const getReviewsID = function(productID, client) {
     }
   ]).toArray()
     .then(res => {
-      console.log(res);
       let characteristics_reviews = db.collection('characteristics_reviews');
       let count = res.length;
       let executingCall = 0;
@@ -117,8 +116,8 @@ const getReviewsID = function(productID, client) {
             multipleQ.push(result[0]);
             executingCall += 1;
             if (executingCall === count) {
-              console.log(multipleQ);
-              db.collection('testing').insertMany(multipleQ)
+              let aggregation_characteristics = db.collection('testing_aggregation_characteristics');
+              aggregation_characteristics.insertMany(multipleQ)
                 .then(() => {
                   client.close();
                 })
