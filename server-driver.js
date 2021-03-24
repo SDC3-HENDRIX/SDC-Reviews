@@ -5,7 +5,6 @@ const axios = require('axios');
 const executeETL = require('./mongodb-connections');
 const mongooseConn = require('./mongoose-connections');
 const reviewModel = require('./mongoose-model');
-const e = require('express');
 
 const app = express();
 const port = 3000;
@@ -15,6 +14,23 @@ app.use(morgan('tiny'));
 
 app.get('/', (req, res) => {
   res.send('Hello World lul');
+})
+
+app.get('/reviews', (req, res) => {
+  reviewModel.find({product_id: req.query.product_id})
+    .then(review => {
+      if(review.length === 0) {
+        executeETL(req.query.product_id)
+          .then(() => {
+            reviewModel.find({product_id: req.query.product_id})
+              .then(review => {
+                res.status(200).send(review);
+              })
+          })
+      } else {
+        res.status(200).send(review);
+      }
+    })
 })
 
 app.get('/reviews/meta', (req, res) => {
@@ -72,9 +88,10 @@ app.post('/reviews', (req, res) => {
         return cArray;
       }
       let newReview = reviewModel({...req.body, ...{
-        date: moment(Date.now().toString()).format('YYYY-MM-DD') ,
+        date: moment(Date.now()).format('YYYY-MM-DD') ,
         id: 7000000 + id, // DYNAMIC ID 
         reported: false,
+        recommended: req.body.recommended ? 1 : 0,
         reviewer_name: req.body.name,
         reviewer_email: req.body.email,
         helpfulness: 0,

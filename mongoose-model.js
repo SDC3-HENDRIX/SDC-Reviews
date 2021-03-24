@@ -14,7 +14,7 @@ let reviewSchema = new Schema({
   date: {type: String, required: true},
   summary: {type: String, required: true},
   body: {type: String, required: true},
-  recommend: Boolean,
+  recommend: Number,
   reported: {type: Number, required: true, default: 0},
   reviewer_name: {type: String, required: true},
   reviewer_email: {type: String, required: true},
