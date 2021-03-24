@@ -91,11 +91,11 @@ const pipeline_process_reviews_characteristics = function(reviewID) {
               {"date": "$date"},
               {"summary": "$summary"},
               {"body": "$body"},
-              {"recommend": "$recommend"},
+              {"recommend": {'$toBool': "$recommend"}},
               {"reported": "$reported"},
               {"reviewer_name": "$reviewer_name"},
               {"reviewer_email": "$reviewer_email"},
-              {"response": "$response"},
+              {"response": { $ifNull: ['', "$response" ]}},
               {"helpfulness": "$helpfulness"},
               {"characteristics_reviews": { '$arrayElemAt': [ "$characteristics_reviews.characteristics", 0 ] } }
             ]
@@ -165,73 +165,70 @@ const processCharacteristics = function(res, client) {
   let executingCallCharacteristics = 0;
   let multipleQCharacteristics = [];
   res.forEach(review => {
-    console.log('Review ID', review.id);
+    // console.log('Review ID', review.id);
     characteristics_reviews.aggregate(pipeline_process_characteristics(review.id)).toArray()
       .then(result => {
         multipleQCharacteristics.push(result[0]);
         executingCallCharacteristics += 1;
         if (executingCallCharacteristics === count) {
-          processReviewsWCharacteristics(res, multipleQCharacteristics, client)
+          let aggregation_characteristics = db.collection('testing_aggregation_characteristics');
+          // console.log(multipleQCharacteristics)
+          aggregation_characteristics.insertMany(multipleQCharacteristics)
+            .then(() => {
+              processReviewsWCharacteristics(res, client)
+          })
         }
       })
   });
-}
+};
 
-const processReviewsWCharacteristics = function(res, multipleQCharacteristics, client) {
+const processReviewsWCharacteristics = function(res, client) {
   let db = client.db('reviews');
   let reviews = db.collection('reviews');
   let count = res.length;
-  let aggregation_characteristics = db.collection('testing_aggregation_characteristics');
   let executingCallReviewsP1 = 0;
   let multipleQReviews = [];
-  console.log(multipleQCharacteristics)
-  aggregation_characteristics.insertMany(multipleQCharacteristics)
-    .then(() => {
-      res.forEach(reviewID => {
-        console.log('2nd ReviewID ', reviewID.id);
-        reviews.aggregate(pipeline_process_reviews_characteristics(reviewID.id)).toArray()
-          .then(result => {
-            multipleQReviews.push(result[0]);
-            executingCallReviewsP1 += 1;
-            if(executingCallReviewsP1 === count) {
-              processReviewsWPhotos(res,multipleQReviews, client)
-            }
-          })
+  res.forEach(reviewID => {
+    // console.log('2nd ReviewID ', reviewID.id);
+    reviews.aggregate(pipeline_process_reviews_characteristics(reviewID.id)).toArray()
+      .then(result => {
+        multipleQReviews.push(result[0]);
+        executingCallReviewsP1 += 1;
+        if(executingCallReviewsP1 === count) {
+          let aggregation_reviews = db.collection('testing_aggregation_review_part1');
+          // console.log(multipleQReviews);
+          aggregation_reviews.insertMany(multipleQReviews)
+            .then(()=> {
+              processReviewsWPhotos(res, client)
+            })
+        }
       })
-    })
-}
+  })
+};
 
-const processReviewsWPhotos = function(res, multipleQReviews, client) {
-  console.log(multipleQReviews);
+const processReviewsWPhotos = function(res, client) {
   let db = client.db('reviews');
   let count = res.length;
-  let aggregation_reviews = db.collection('testing_aggregation_review_part1');
   let executingCallReviewsP2 = 0;
   let multipleQReviews2 = [];
-  aggregation_reviews.insertMany(multipleQReviews)
-    .then(()=> {
-      res.forEach(reviewID => {
-        console.log('3rd ReviewID', reviewID.id);
-        aggregation_reviews.aggregate(pipeline_process_reviews_photos(reviewID.id)).toArray()
-          .then(result => {
-            multipleQReviews2.push(result[0]);
-            executingCallReviewsP2 += 1;
-            if(executingCallReviewsP2 === count) {
-              console.log(multipleQReviews2);
-              let aggregation_reviews_final = db.collection('testing_aggregation_final');
-              aggregation_reviews_final.insertMany(multipleQReviews2)
-                .then(() => {
-                  client.close();
-                })
-            }
-          })
-        })
-    })
-}
-
-MongoClient.connect(connectionURL, {poolSize: 10, bufferMaxEntries: 0, reconnectTries: 5000, useNewUrlParser: true,useUnifiedTopology: true}, function (err, client) {
-  collectionProcessor(19092, client);
-});
+  let aggregation_reviews = db.collection('testing_aggregation_review_part1');
+  res.forEach(reviewID => {
+    // console.log('3rd ReviewID', reviewID.id);
+    aggregation_reviews.aggregate(pipeline_process_reviews_photos(reviewID.id)).toArray()
+      .then(result => {
+        multipleQReviews2.push(result[0]);
+        executingCallReviewsP2 += 1;
+        if(executingCallReviewsP2 === count) {
+          // console.log(multipleQReviews2);
+          let aggregation_reviews_final = db.collection('testing_aggregation_final');
+          aggregation_reviews_final.insertMany(multipleQReviews2)
+            .then(() => {
+              client.close(); // END
+            })
+        }
+      })
+  })
+};
 
 const collectionProcessor = function(productID, client) {
   let db = client.db('reviews');
@@ -244,3 +241,11 @@ const collectionProcessor = function(productID, client) {
       console.log("Error: Damn so sad.", err)
     })
 };
+
+const executeETL = function(productID) {
+  MongoClient.connect(connectionURL, {poolSize: 10, bufferMaxEntries: 0, reconnectTries: 5000, useNewUrlParser: true,useUnifiedTopology: true}, function (err, client) {
+    collectionProcessor(productID, client);
+  });
+};
+
+module.exports = executeETL;
