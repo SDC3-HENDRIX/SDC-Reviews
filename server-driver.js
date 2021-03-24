@@ -18,56 +18,46 @@ app.get('/', (req, res) => {
 })
 
 app.get('/reviews/meta', (req, res) => {
-  let ratings = {};
-  let recommended = {};
-  let characteristics = {};
-  let count = 0;
+  let metadata = {
+    ratings: {},
+    recommended: {},
+    characteristics: {}
+  };
+  let charCount = {};
   reviewModel.find({product_id: req.query.product_id})
     .then(reviews => {
       reviews.forEach(review => {
-        count += 1;
-        if(!ratings[review.rating]) {
-          ratings[review.rating] = 1;
+        if(!metadata.ratings[review.rating]) {
+          metadata.ratings[review.rating] = 1;
         } else {
-          ratings[review.rating] += 1;
+          metadata.ratings[review.rating] += 1;
         }
 
-        if(!recommended[review.recommend.toString()]) {
-          recommended[review.recommend.toString()] = 1;
+        if(!metadata.recommended[review.recommend.toString()]) {
+          metadata.recommended[review.recommend.toString()] = 1;
         } else {
-          recommended[review.recommend.toString()] += 1;
+          metadata.recommended[review.recommend.toString()] += 1;
         }
 
         review.characteristics_reviews.forEach(char => {
-          console.log(char)
-          if(!characteristics[char.characteristic_id]) {
-            characteristics[char.characteristic_id] = {id: char.characteristic_id, value: 1};
+          if(!metadata.characteristics[char.characteristic_id]) {
+            metadata.characteristics[char.characteristic_id] = {id: char.characteristic_id, value: char.value};
+            charCount[char.characteristic_id] = 1;
           } else {
-            characteristics[char.characteristic_id].value += 1;
+            metadata.characteristics[char.characteristic_id].value += char.value;
+            charCount[char.characteristic_id] += 1;
           }
         });
       });
-      console.log('Ratings', ratings);
-      console.log('Recommended', recommended);
-      console.log('Characteristics', characteristics);
-      let characteristic_id = Object.keys(characteristics);
+      let characteristic_id = Object.keys(metadata.characteristics);
       characteristic_id.forEach(char => {
-        characteristics[char] = characteristics[char] / count;
+        metadata.characteristics[char].value = metadata.characteristics[char].value / charCount[char];
       });
-      let deepCopyCharacteristics = JSON.stringify(characteristics);
-      console.log('DeepCopy', deepCopyCharacteristics);
-      let metadata = {
-        ...{product_id: req.query.product_id},
-        ...{ratings: ratings},
-        ...{recommended: recommended},
-        ...{characteristics: deepCopyCharacteristics}
-      }
       res.status(200).json(metadata);
     })
 })
 
 app.post('/reviews', (req, res) => {
-  console.log('Body', req.body);
   let id = 0;
   reviewModel.count({}, function (err, count) {
     if(err) { console.log('Error count', err)} 
@@ -95,7 +85,6 @@ app.post('/reviews', (req, res) => {
         if(err){
           return console.log('Error on Mongoose', err);
         }
-        console.log(review.id,' Saved in mongo database with mongoose');
         res.status(201).send('Created');
       })
     })  
