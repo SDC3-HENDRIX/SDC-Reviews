@@ -9,6 +9,18 @@ const reviewModel = require('./mongoose-model');
 const app = express();
 const port = 3000;
 
+const customLabel = {
+  totalDocs: 'totalReviews',
+  docs: 'results',
+  limit: 'count',
+  offset: 'page',
+  page: 'currentPage',
+  nextPage: 'nextPage',
+  prevPage: 'prevPage',
+  totalPages: 'totalPages',
+  pagingCounter: 'pagingCounter',
+};
+
 app.use(express.json())
 app.use(morgan('tiny'));
 
@@ -17,9 +29,14 @@ app.get('/', (req, res) => {
 })
 
 app.get('/reviews', (req, res) => {
+  let options = {
+    offset: ( req.query.page - 1 ) * ( req.query.count || 5 ) || 0,
+    limit: req.query.count || 5,
+    customLabels: customLabel
+  }
   reviewModel.paginate(
     {product_id: req.query.product_id}, 
-    {offset: ( req.query.page - 1 ) * ( req.query.count || 5 ) || 0, limit: req.query.count || 5}
+    options
     )
     .then(review => {
       if(review.length === 0) {
@@ -28,7 +45,7 @@ app.get('/reviews', (req, res) => {
             if(result) {
               reviewModel.find(
                 {product_id: req.query.product_id}, 
-                {offset: ( req.query.page - 1 ) * ( req.query.count || 5 ) || 0, limit: req.query.count || 5}
+                options
                 )
               .then(review => {
                 res.status(200).send(review);
