@@ -5,6 +5,7 @@ const axios = require('axios');
 const executeETL = require('./mongodb-connections');
 const mongooseConn = require('./mongoose-connections');
 const reviewModel = require('./mongoose-model');
+const e = require('express');
 
 const app = express();
 const port = 3000;
@@ -14,6 +15,55 @@ app.use(morgan('tiny'));
 
 app.get('/', (req, res) => {
   res.send('Hello World lul');
+})
+
+app.get('/reviews/meta', (req, res) => {
+  let ratings = {};
+  let recommended = {};
+  let characteristics = {};
+  let count = 0;
+  reviewModel.find({product_id: req.query.product_id})
+    .then(reviews => {
+      reviews.forEach(review => {
+        count += 1;
+        if(!ratings[review.rating]) {
+          ratings[review.rating] = 1;
+        } else {
+          ratings[review.rating] += 1;
+        }
+
+        if(!recommended[review.recommend.toString()]) {
+          recommended[review.recommend.toString()] = 1;
+        } else {
+          recommended[review.recommend.toString()] += 1;
+        }
+
+        review.characteristics_reviews.forEach(char => {
+          console.log(char)
+          if(!characteristics[char.characteristic_id]) {
+            characteristics[char.characteristic_id] = {id: char.characteristic_id, value: 1};
+          } else {
+            characteristics[char.characteristic_id].value += 1;
+          }
+        });
+      });
+      console.log('Ratings', ratings);
+      console.log('Recommended', recommended);
+      console.log('Characteristics', characteristics);
+      let characteristic_id = Object.keys(characteristics);
+      characteristic_id.forEach(char => {
+        characteristics[char] = characteristics[char] / count;
+      });
+      let deepCopyCharacteristics = JSON.stringify(characteristics);
+      console.log('DeepCopy', deepCopyCharacteristics);
+      let metadata = {
+        ...{product_id: req.query.product_id},
+        ...{ratings: ratings},
+        ...{recommended: recommended},
+        ...{characteristics: deepCopyCharacteristics}
+      }
+      res.status(200).json(metadata);
+    })
 })
 
 app.post('/reviews', (req, res) => {
