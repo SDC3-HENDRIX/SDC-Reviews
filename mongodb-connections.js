@@ -164,23 +164,29 @@ const processCharacteristics = function(res, client, resolve) {
   let count = res.length;
   let executingCallCharacteristics = 0;
   let multipleQCharacteristics = [];
-  console.log('Now in Process Characteristics', res);
-  res.forEach(review => {
-    console.log('Review ID', review.id);
-    characteristics_reviews.aggregate(pipeline_process_characteristics(review.id)).toArray()
-      .then(result => {
-        multipleQCharacteristics.push(result[0]);
-        executingCallCharacteristics += 1;
-        if (executingCallCharacteristics === count) {
-          let aggregation_characteristics = db.collection('testing_aggregation_characteristics');
-          console.log(multipleQCharacteristics)
-          aggregation_characteristics.insertMany(multipleQCharacteristics)
-            .then(() => {
-              processReviewsWCharacteristics(res, client, resolve);
-          })
-        }
-      })
-  });
+  // console.log('Now in Process Characteristics', res);
+  if(count !== 0) {
+    res.forEach(review => {
+      // console.log('Review ID', review.id);
+      characteristics_reviews.aggregate(pipeline_process_characteristics(review.id)).toArray()
+        .then(result => {
+          multipleQCharacteristics.push(result[0]);
+          executingCallCharacteristics += 1;
+          if (executingCallCharacteristics === count) {
+            let aggregation_characteristics = db.collection('testing_aggregation_characteristics');
+            // console.log(multipleQCharacteristics)
+            aggregation_characteristics.insertMany(multipleQCharacteristics)
+              .then(() => {
+                processReviewsWCharacteristics(res, client, resolve);
+            })
+          }
+        })
+    });
+  } else {
+    resolve(0);
+    client.close();
+  }
+  
 };
 
 const processReviewsWCharacteristics = function(res, client, resolve) {
@@ -190,14 +196,14 @@ const processReviewsWCharacteristics = function(res, client, resolve) {
   let executingCallReviewsP1 = 0;
   let multipleQReviews = [];
   res.forEach(reviewID => {
-    console.log('2nd ReviewID ', reviewID.id);
+    // console.log('2nd ReviewID ', reviewID.id);
     reviews.aggregate(pipeline_process_reviews_characteristics(reviewID.id)).toArray()
       .then(result => {
         multipleQReviews.push(result[0]);
         executingCallReviewsP1 += 1;
         if(executingCallReviewsP1 === count) {
           let aggregation_reviews = db.collection('testing_aggregation_review_part1');
-          console.log(multipleQReviews);
+          // console.log(multipleQReviews);
           aggregation_reviews.insertMany(multipleQReviews)
             .then(()=> {
               processReviewsWPhotos(res, client, resolve);
@@ -214,13 +220,13 @@ const processReviewsWPhotos = function(res, client, resolve) {
   let multipleQReviews2 = [];
   let aggregation_reviews = db.collection('testing_aggregation_review_part1');
   res.forEach(reviewID => {
-    console.log('3rd ReviewID', reviewID.id);
+    // console.log('3rd ReviewID', reviewID.id);
     aggregation_reviews.aggregate(pipeline_process_reviews_photos(reviewID.id)).toArray()
       .then(result => {
         multipleQReviews2.push(result[0]);
         executingCallReviewsP2 += 1;
         if(executingCallReviewsP2 === count) {
-          console.log(multipleQReviews2);
+          // console.log(multipleQReviews2);
           let aggregation_reviews_final = db.collection('testing_aggregation_final');
           aggregation_reviews_final.insertMany(multipleQReviews2)
             .then(() => {
@@ -235,11 +241,11 @@ const processReviewsWPhotos = function(res, client, resolve) {
 const collectionProcessor = function(productID, client, resolve) {
   let db = client.db('reviews');
   let reviews = db.collection('reviews');
-  console.log('Product ID', productID);
-  console.log('pipeline', pipeline_getReviewsID(productID));
+  // console.log('Product ID', productID);
+  // console.log('pipeline', pipeline_getReviewsID(productID));
   reviews.aggregate(pipeline_getReviewsID(productID)).toArray()
     .then(res => {
-      console.log('Reviews with product ID ', productID, res);
+      // console.log('Reviews with product ID ', productID, res);
       processCharacteristics(res, client, resolve);
     }).catch(err => {
       console.log("Error: Damn so sad.", err)

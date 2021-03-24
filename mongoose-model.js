@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const Schema = mongoose.Schema;
 
@@ -23,5 +24,7 @@ let reviewSchema = new Schema({
   characteristics_reviews: [characteristicsSchema],
   photos: [String]
 });
+
+reviewSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model('reviewSchema', reviewSchema, 'testing_aggregation_final');

@@ -17,19 +17,33 @@ app.get('/', (req, res) => {
 })
 
 app.get('/reviews', (req, res) => {
-  reviewModel.find({product_id: req.query.product_id})
+  reviewModel.paginate(
+    {product_id: req.query.product_id}, 
+    {offset: ( req.query.page - 1 ) * ( req.query.count || 5 ) || 0, limit: req.query.count || 5}
+    )
     .then(review => {
       if(review.length === 0) {
         executeETL(req.query.product_id)
-          .then(() => {
-            reviewModel.find({product_id: req.query.product_id})
+          .then( result => {
+            if(result) {
+              reviewModel.find(
+                {product_id: req.query.product_id}, 
+                {offset: ( req.query.page - 1 ) * ( req.query.count || 5 ) || 0, limit: req.query.count || 5}
+                )
               .then(review => {
                 res.status(200).send(review);
               })
+            } else {
+              res.status(404).send('No reviews with this product id')
+            }
+            
           })
       } else {
         res.status(200).send(review);
       }
+    })
+    .catch(err => {
+      console.log('Error', err);
     })
 })
 
